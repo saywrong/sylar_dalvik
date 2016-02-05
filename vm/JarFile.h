@@ -19,6 +19,9 @@
 #ifndef DALVIK_JARFILE_H_
 #define DALVIK_JARFILE_H_
 
+#include "Inlines.h"
+#include "DvmDex.h"
+#include "libdex/ZipArchive.h"
 /*
  * This represents an open, scanned Jar file.  (It's actually for any Zip
  * archive that happens to hold a Dex file.)

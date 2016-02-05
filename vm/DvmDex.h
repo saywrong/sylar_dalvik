@@ -23,7 +23,7 @@
 
 #include "jni.h"
 #include "libdex/DexFile.h"
-
+#include "Inlines.h"
 /* extern */
 struct ClassObject;
 struct HashTable;
