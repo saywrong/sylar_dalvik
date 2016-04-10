@@ -39,6 +39,17 @@ extern "C" bool dvmCheckAsmConstants(void);
 extern "C" void dvmMterpStdRun(Thread* self);
 extern "C" void dvmMterpStdBail(Thread* self);
 
+extern "C" void dvmMterpSpyEnable();
+#define CALL_INVOKE_WATCHER \
+    IMPORT test_c_args \
+    .extern isSpyActive \
+    ldr r1,=isSpyActive  \
+    cmp r1, #0 \
+    blne callInvokeWatcher  
+
+// extern unsigned int isSpyActive;
+extern "C" void callInvokeWatcher(Method* methodToCall, void *fp, Thread* curThread);
+// void callInvokeWatcher();
 /*
  * Helper for common_printMethod(), invoked from the assembly
  * interpreter.

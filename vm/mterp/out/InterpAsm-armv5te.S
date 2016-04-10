@@ -253,6 +253,8 @@ unspecified registers or condition codes.
  *
  * When this is defined, we add some stuff to make gdb less confused.
  */
+
+
 #define ASSIST_DEBUGGER 1
 
     .text
@@ -266,7 +268,11 @@ unspecified registers or condition codes.
  *
  * The return comes via a call to dvmMterpStdBail().
  */
+
+
+
 dvmMterpStdRun:
+
 #define MTERP_ENTRY1 \
     .save {r4-r10,fp,lr}; \
     stmfd   sp!, {r4-r10,fp,lr}         @ save 9 regs
@@ -16644,6 +16650,22 @@ common_invokeMethodNoRange:
 0:  @ fall through to .LinvokeArgsDone
 
 .LinvokeArgsDone: @ r0=methodToCall
+    #.extern callInvokeWatcher 
+    ldr r1, isSpyActive
+0:  add r1, pc
+    ldr r1, [r1]
+    cmp r1, #1
+    bne 2f
+    stmfd   sp!, {r0-r12, lr}
+    mov     r1, rFP
+    mov     r2, rSELF
+    bl callInvokeWatcher  
+    b 1f
+isSpyActive:
+    .word PCREL_REF(.LisSpyActive,0b)
+1:
+    ldmfd   sp!, {r0-r12, lr}
+2:
     ldrh    r9, [r0, #offMethod_registersSize]  @ r9<- methodToCall->regsSize
     ldrh    r3, [r0, #offMethod_outsSize]  @ r3<- methodToCall->outsSize
     ldr     r2, [r0, #offMethod_insns]  @ r2<- method->insns
@@ -17300,7 +17322,20 @@ dvmConfigureFP:
     ldmfd   sp!, {ip, pc}
 #endif
 
-
+    .align  2
+    .global dvmMterpSpyEnable
+    .type   dvmMterpSpyEnable, %function
+dvmMterpSpyEnable:
+    stmfd   sp!, {r1, lr}
+    ldr r1, aa
+0:  add r1, pc
+    mov r2, #1
+    str r2, [r1]
+    b 1f
+aa:
+    .word PCREL_REF(.LisSpyActive,0b)
+1:
+    ldmfd   sp!, {r1, pc}
 
 /*
  * Zero-terminated ASCII string data.
@@ -17332,4 +17367,10 @@ dvmConfigureFP:
     .asciz  "<%#x>"
 .LstrPrintLong:
     .asciz  "<%lld>"
+
+
+.data
+.LisSpyActive:
+    .word 0
+
 

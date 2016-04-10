@@ -37,7 +37,7 @@ INLINE void dvmExportPC(const u2* pc, const u4* fp)
  * Interpreter entry point.  Call here after setting up the interpreted
  * stack (most code will want to get here via dvmCallMethod().)
  */
-void dvmInterpret(Thread* thread, const Method* method, JValue* pResult);
+extern "C" void dvmInterpret(Thread* thread, const Method* method, JValue* pResult);
 
 /*
  * Throw an exception for a problem detected by the verifier.

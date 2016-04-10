@@ -29,6 +29,8 @@
  *
  * When this is defined, we add some stuff to make gdb less confused.
  */
+
+
 #define ASSIST_DEBUGGER 1
 
     .text
@@ -42,7 +44,11 @@
  *
  * The return comes via a call to dvmMterpStdBail().
  */
+
+
+
 dvmMterpStdRun:
+
 #define MTERP_ENTRY1 \
     .save {r4-r10,fp,lr}; \
     stmfd   sp!, {r4-r10,fp,lr}         @ save 9 regs

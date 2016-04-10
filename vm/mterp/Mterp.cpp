@@ -23,6 +23,42 @@
 #include <stddef.h>
 
 
+// void dvmMterpSpyEnable()
+// {
+//     extern unsigned int isSpyActive;
+//     isSpyActive = 1;
+// }
+void sylar_PrintMethod(Method* method)
+{
+    /*
+     * It is a direct (non-virtual) method if it is static, private,
+     * or a constructor.
+     */
+    bool isDirect =
+        ((method->accessFlags & (ACC_STATIC|ACC_PRIVATE)) != 0) ||
+        (method->name[0] == '<');
+
+    char* desc = dexProtoCopyMethodDescriptor(&method->prototype);
+
+    ALOGE("<%c:%s.%s %s> ",
+            isDirect ? 'D' : 'V',
+            method->clazz->descriptor,
+            method->name,
+            desc);
+
+    free(desc);
+}
+
+void callInvokeWatcher(Method* methodToCall, void *fp, Thread* curThread)
+{
+    StackSaveArea* saveArea = SAVEAREA_FROM_FP(fp);
+    const Method* curMethod = saveArea->method;
+    ALOGE("%s calling %s\n",methodToCall->name, curMethod->name);
+}
+// void callInvokeWatcher()
+// {
+// }
+
 /*
  * Verify some constants used by the mterp interpreter.
  */
@@ -70,7 +106,6 @@ bool dvmCheckAsmConstants()
 
     return !failed;
 }
-
 
 /*
  * "Mterp entry point.
