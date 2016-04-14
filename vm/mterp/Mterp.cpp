@@ -21,7 +21,9 @@
 #include "mterp/Mterp.h"
 
 #include <stddef.h>
+#include <dlfcn.h>
 
+#if not defined(BUILD_HOST)
 
 // void dvmMterpSpyEnable()
 // {
@@ -49,16 +51,38 @@ void sylar_PrintMethod(Method* method)
     free(desc);
 }
 
-void callInvokeWatcher(Method* methodToCall, void *fp, Thread* curThread)
+
+typedef void (*Pdalvik_invoke_watcher)(const Method*, Method*, void*, void*); 
+Pdalvik_invoke_watcher dalvik_invoke_watcher = NULL;
+
+void callInvokeWatcher(Method* methodToCall, u4 *fp, Thread* curThread)
 {
+    if(!dalvik_invoke_watcher)
+    {
+        void *lib = dlopen("libspy.so", RTLD_NOW);
+        if(lib == NULL)
+        {
+            ALOGE("libdvm open libspy faild\n");
+            return;
+        }
+            
+        dalvik_invoke_watcher = (Pdalvik_invoke_watcher)dlsym(lib,"dalvik_invoke_watcher");
+        if(dalvik_invoke_watcher==NULL)
+            ALOGE("dlsym dalvik_invoke_watcher faild\n");
+    }
+    // ALOGE("spsize:%d", sizeof(StackSaveArea));
     StackSaveArea* saveArea = SAVEAREA_FROM_FP(fp);
     const Method* curMethod = saveArea->method;
-    ALOGE("%s calling %s\n",methodToCall->name, curMethod->name);
+    // ClassObject* curclazz = curMethod->clazz;
+    // ClassObject* callClazz = methodToCall->clazz;
+
+    dalvik_invoke_watcher(curMethod, methodToCall, saveArea, curThread); 
+
 }
 // void callInvokeWatcher()
 // {
 // }
-
+#endif
 /*
  * Verify some constants used by the mterp interpreter.
  */

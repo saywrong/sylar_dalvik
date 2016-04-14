@@ -32,6 +32,7 @@ LOCAL_PATH:= $(call my-dir)
 # Build for the target (device).
 #
 
+
 ifeq ($(TARGET_CPU_SMP),true)
     target_smp_flag := -DANDROID_SMP=1
 else
@@ -134,7 +135,8 @@ ifeq ($(WITH_HOST_DALVIK),true)
             $(patsubst libffi, ,$(LOCAL_SHARED_LIBRARIES))
     endif
 
-    LOCAL_CFLAGS += $(host_smp_flag)
+    LOCAL_CFLAGS += $(host_smp_flag) 
+    LOCAL_CFLAGS += -D BUILD_HOST
     # TODO: split out the asflags.
     LOCAL_ASFLAGS := $(LOCAL_CFLAGS)
     LOCAL_MODULE_TAGS := optional
