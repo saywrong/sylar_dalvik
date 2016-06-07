@@ -168,4 +168,7 @@ void dvmDumpJniReferenceTables(void);
 struct DebugOutputTarget;
 void dvmDumpJniStats(DebugOutputTarget* target);
 
+// Added by sylar
+jobject addGlobalReference(Object* obj);
+void deleteGlobalReference(jobject jobj);
 #endif  // DALVIK_JNIINTERNAL_H_

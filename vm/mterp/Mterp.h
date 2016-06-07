@@ -38,16 +38,19 @@ extern "C" bool dvmCheckAsmConstants(void);
  */
 extern "C" void dvmMterpStdRun(Thread* self);
 extern "C" void dvmMterpStdBail(Thread* self);
-
+ 
 extern "C" void dvmMterpSpyEnable();
 
 // extern unsigned int isSpyActive;
-extern "C" void callInvokeWatcher(Method* methodToCall, void *fp, Thread* curThread);
+extern "C" void callInvokeWatcher(Method* methodToCall, u4 *fp, Thread* curThread);
 // void callInvokeWatcher();
+extern "C" char* sylarJstring2Cstr(const Object* obj);
 /*
  * Helper for common_printMethod(), invoked from the assembly
  * interpreter.
  */
 extern "C" void dvmMterpPrintMethod(Method* method);
+
+extern "C" bool mterpWatcherInit();
 
 #endif  // DALVIK_MTERP_MTERP_H_

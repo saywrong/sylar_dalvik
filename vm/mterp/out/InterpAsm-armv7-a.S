@@ -16129,13 +16129,17 @@ common_invokeMethodNoRange:
 0:  @ fall through to .LinvokeArgsDone
 
 .LinvokeArgsDone: @ r0=methodToCall
+    @
+    @ sylar invoke watcher code start
+    @
     #.extern callInvokeWatcher 
+    stmfd   sp!, {r0-r12, lr}
     ldr r1, isSpyActive
 0:  add r1, pc
     ldr r1, [r1]
     cmp r1, #1
-    bne 2f
-    stmfd   sp!, {r0-r12, lr}
+    bne 1f
+    
     mov     r1, rFP
     mov     r2, rSELF
     bl callInvokeWatcher  
@@ -16144,7 +16148,9 @@ isSpyActive:
     .word PCREL_REF(.LisSpyActive,0b)
 1:
     ldmfd   sp!, {r0-r12, lr}
-2:
+    @
+    @ sylar invoke watcher code end
+    @
     ldrh    r9, [r0, #offMethod_registersSize]  @ r9<- methodToCall->regsSize
     ldrh    r3, [r0, #offMethod_outsSize]  @ r3<- methodToCall->outsSize
     ldr     r2, [r0, #offMethod_insns]  @ r2<- method->insns

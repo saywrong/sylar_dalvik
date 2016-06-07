@@ -127,7 +127,6 @@ IndirectRef IndirectRefTable::add(u4 cookie, Object* obj)
     slot->obj = obj;
     slot->serial = nextSerial(slot->serial);
     result = toIndirectRef(slot - table_, slot->serial, kind_);
-
     assert(result != NULL);
     return result;
 }
@@ -222,12 +221,13 @@ bool IndirectRefTable::remove(u4 cookie, IndirectRef iref)
     assert(segmentState.parts.numHoles >= prevState.parts.numHoles);
 
     IndirectRefKind kind = indirectRefKind(iref);
+
     u4 index;
     if (kind == kind_) {
         index = extractIndex(iref);
         if (index < bottomIndex) {
             /* wrong segment */
-            ALOGV("Attempt to remove index outside index area (%ud vs %ud-%ud)",
+            ALOGE("Attempt to remove index outside index area (%ud vs %ud-%ud)",
                     index, bottomIndex, topIndex);
             return false;
         }
@@ -258,6 +258,7 @@ bool IndirectRefTable::remove(u4 cookie, IndirectRef iref)
         index = i;
     } else {
         // References of the requested kind cannot appear within this table.
+        ALOGE("11111 kIndirectKindInvalid ");
         return false;
     }
 

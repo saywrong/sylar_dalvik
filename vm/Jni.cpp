@@ -441,7 +441,7 @@ static void deleteLocalReference(Thread* self, jobject jobj) {
  * We may add the same object more than once.  Add/remove calls are paired,
  * so it needs to appear on the list multiple times.
  */
-static jobject addGlobalReference(Object* obj) {
+jobject addGlobalReference(Object* obj) {
     if (obj == NULL) {
         return NULL;
     }
@@ -538,7 +538,7 @@ static void deleteWeakGlobalReference(jobject jobj) {
  * Thought: if it's not the most recent entry, just null it out.  When we
  * fill up, do a compaction pass before we expand the list.
  */
-static void deleteGlobalReference(jobject jobj) {
+void deleteGlobalReference(jobject jobj) {
     if (jobj == NULL) {
         return;
     }

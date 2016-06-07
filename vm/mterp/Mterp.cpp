@@ -25,37 +25,86 @@
 
 #if not defined(BUILD_HOST)
 
-// void dvmMterpSpyEnable()
-// {
-//     extern unsigned int isSpyActive;
-//     isSpyActive = 1;
-// }
-void sylar_PrintMethod(Method* method)
-{
-    /*
-     * It is a direct (non-virtual) method if it is static, private,
-     * or a constructor.
-     */
-    bool isDirect =
-        ((method->accessFlags & (ACC_STATIC|ACC_PRIVATE)) != 0) ||
-        (method->name[0] == '<');
+void sylarBeforCallWatcher(u4* args, Method* method, Thread* self) {
+    u4* modArgs = (u4*) args;
 
-    char* desc = dexProtoCopyMethodDescriptor(&method->prototype);
+    u4 accessFlags = method->accessFlags;
 
-    ALOGE("<%c:%s.%s %s> ",
-            isDirect ? 'D' : 'V',
-            method->clazz->descriptor,
-            method->name,
-            desc);
+    int idx = 0;
 
-    free(desc);
+    if ((accessFlags & ACC_STATIC) == 0) {
+        // ALOGE("not static method\n");
+        modArgs[idx] = (u4) addGlobalReference( (Object*) modArgs[idx]);
+        idx++;
+    }
+    const char* shorty = &method->shorty[1];        /* skip return type */
+    while (*shorty != '\0') {
+        switch (*shorty++) {
+        case 'L':
+            // ALOGE("1  local %d: 0x%08x", idx, modArgs[idx]);
+            if (modArgs[idx] != 0) {
+                modArgs[idx] = (u4) addGlobalReference((Object*) modArgs[idx]);
+            }
+            // ALOGE("1  local %d: 0x%08x", idx, modArgs[idx]);
+            break;
+        case 'D':
+        case 'J':
+            idx++;
+            break;
+        default:
+            /* Z B C S I -- do nothing */
+            break;
+        }
+        idx++;
+    }
+}
+void sylarAfterCallWatcher(u4* args, Method* method, Thread* self) {
+    u4* modArgs = (u4*) args;
+
+    u4 accessFlags = method->accessFlags;
+
+    int idx = 0;
+
+    if ((accessFlags & ACC_STATIC) == 0) {
+        /* delete "this" */
+        Object* temp = dvmDecodeIndirectRef(self, (jobject) modArgs[idx]);
+        deleteGlobalReference((jobject) modArgs[idx]);
+        modArgs[idx++] = (u4)temp;
+    }
+    const char* shorty = &method->shorty[1];        /* skip return type */
+    while (*shorty != '\0') {
+        switch (*shorty++) {
+        case 'L':
+            // ALOGE("2  local %d: 0x%08x", idx, modArgs[idx]);
+            if (modArgs[idx] != 0) {
+
+                Object* temp = dvmDecodeIndirectRef(self, (jobject) modArgs[idx]);
+                deleteGlobalReference((jobject) modArgs[idx]);
+                modArgs[idx] = (u4)temp;
+            }
+            else
+                ALOGE("modargs %d is null",idx);
+            break;
+        case 'D':
+        case 'J':
+            idx++;
+            break;
+        default:
+            /* Z B C S I -- do nothing */
+            break;
+        }
+        idx++;
+    }
 }
 
 
-typedef void (*Pdalvik_invoke_watcher)(const Method*, Method*, void*, void*); 
+
+typedef void (*Pdalvik_invoke_watcher)(const Method*, Method*, u4*,const char*, void*); 
 Pdalvik_invoke_watcher dalvik_invoke_watcher = NULL;
 
-void callInvokeWatcher(Method* methodToCall, u4 *fp, Thread* curThread)
+DexStringCache G_STRINGCACHE;
+bool G_MTERP_WATCHER_INIT = false;
+bool mterpWatcherInit()
 {
     if(!dalvik_invoke_watcher)
     {
@@ -63,25 +112,68 @@ void callInvokeWatcher(Method* methodToCall, u4 *fp, Thread* curThread)
         if(lib == NULL)
         {
             ALOGE("libdvm open libspy faild\n");
-            return;
+            return false;
         }
             
         dalvik_invoke_watcher = (Pdalvik_invoke_watcher)dlsym(lib,"dalvik_invoke_watcher");
         if(dalvik_invoke_watcher==NULL)
+        {
             ALOGE("dlsym dalvik_invoke_watcher faild\n");
+            return false;
+        }
     }
-    // ALOGE("spsize:%d", sizeof(StackSaveArea));
-    StackSaveArea* saveArea = SAVEAREA_FROM_FP(fp);
-    const Method* curMethod = saveArea->method;
-    // ClassObject* curclazz = curMethod->clazz;
-    // ClassObject* callClazz = methodToCall->clazz;
 
-    dalvik_invoke_watcher(curMethod, methodToCall, saveArea, curThread); 
-
+    dexStringCacheInit(&G_STRINGCACHE);
+    G_MTERP_WATCHER_INIT = true;
+    return true;
 }
-// void callInvokeWatcher()
-// {
-// }
+
+void callInvokeWatcher(Method* methodToCall, u4 *fp, Thread* curThread)
+{
+    if(curThread->status == THREAD_NATIVE)
+    {
+        ALOGE("already in native");
+        return;
+    }
+    if(!G_MTERP_WATCHER_INIT)
+        return;
+
+    StackSaveArea* saveArea = SAVEAREA_FROM_FP(fp);
+    u4* outs = OUTS_FROM_FP(fp, methodToCall->insSize);
+
+    
+    // sylarBeforCallWatcher(outs, methodToCall, curThread);
+                 
+
+
+    const Method* curMethod = saveArea->method;
+
+    ThreadStatus oldStatus = dvmChangeStatus(curThread, THREAD_NATIVE);
+    const char *metDesc = dexProtoGetMethodDescriptor(&methodToCall->prototype, &G_STRINGCACHE);
+    // ALOGE("method desc: %s\n", metDesc);
+    dalvik_invoke_watcher(curMethod, methodToCall, outs, metDesc, curThread); 
+    dvmChangeStatus(curThread, oldStatus);
+    // ALOGE("11111");
+    // sylarAfterCallWatcher(outs, methodToCall, curThread);
+    // ALOGE("22222");
+}
+char gCstrBuff[512];
+
+char* sylarJstring2Cstr(const Object* obj)
+{
+    if(!dvmIsHeapAddress((Object*)obj))
+    {
+        // ALOGE("sylarJstring2Cstr obj address error:%p\n", obj);
+        return NULL;
+    }
+    
+    // ALOGE("sylarJstring2Cstr obj address:%p\n", obj);
+    if(((Object*)obj)->clazz == gDvm.classJavaLangString)
+        return dvmCreateCstrFromString((StringObject*)obj);
+    else
+        return NULL;
+}
+
 #endif
 /*
  * Verify some constants used by the mterp interpreter.
